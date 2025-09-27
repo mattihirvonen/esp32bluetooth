@@ -2,9 +2,9 @@
 //
 // Enable only one of following example codes
 //
-#define EXAMPLE_SSP         0
-#define EXAMPLE_BLE_SERVER  1
-#define EXAMPLE_BLE         0
+#define EXAMPLE_SSP         0  // ESP32:   Tested to work
+#define EXAMPLE_BLE_SERVER  1  // ESP32S3: Fixed to work
+#define EXAMPLE_BLE         0  // ESP32S3: Not work properly ???
 
 //========================================================================================
 // https://microcontrollerslab.com/esp32-bluetooth-classic-arduino-ide/
@@ -87,6 +87,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
   }
 };
 
+
 void setup() {
   delay (3000);            // Give VScode+PlatformIO time to open monitor terminal window's COM port
   Serial.begin (115200);
@@ -115,6 +116,7 @@ void setup() {
   pAdvertising->start();
 }
 
+
 void loop() {
   // put your main code here, to run repeatedly:
   delay(2000);
@@ -124,6 +126,9 @@ void loop() {
 
 //========================================================================================
 // https://jiayi0111.github.io/ESP32_S3-C3-extension-board-/Bluetooth/Bluetooth.html
+//
+// Building require add to pletform.ini:
+// lib_deps = avinabmalla/ESP32_BleSerial@^2.0.1
 
 #if EXAMPLE_BLE
 
