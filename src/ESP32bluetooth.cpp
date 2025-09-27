@@ -50,6 +50,31 @@ void loop() {
 
 //========================================================================================
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/Write/Write.ino
+//
+//  \Users\mattihirvonen\.platformio\packages\framework-espressif32\libraries\BLE\src
+//
+// Possible use/case strategy:
+// - get  "command" with onWrite() call back (here data example "read:xyz");
+// - wait onRead() callback to return "onWrite() selected" item (example "data:xyz=1234")
+
+#if 0
+/**
+ * @brief Set the current value.
+ */
+void BLEValue::setValue(std::string value) {
+	m_value = value;
+} // setValue
+
+
+/**
+ * @brief Set the current value.
+ * @param [in] pData The data for the current value.
+ * @param [in] The length of the new current value.
+ */
+void BLEValue::setValue(uint8_t* pData, size_t length) {
+	m_value = std::string((char*) pData, length);
+} // setValue
+#endif
 
 #if EXAMPLE_BLE_SERVER
 
@@ -81,7 +106,6 @@ class MyCallbacks : public BLECharacteristicCallbacks
       for (int i = 0; i < value.length(); i++) {
         Serial.print(value[i]);
       }
-
       Serial.println();
       Serial.println("*********");
     }
@@ -89,7 +113,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
   #if 1
   void onRead(BLECharacteristic *pCharacteristic) {
-    String   value        = pCharacteristic-> getValue().c_str();
+    String value = pCharacteristic-> getValue().c_str();
 
     // All three methods work ok
     #if 0
@@ -102,8 +126,9 @@ class MyCallbacks : public BLECharacteristicCallbacks
     pCharacteristic->setValue(replyvalue);
     #endif
     #if 1
+    // Use this method to reply:
     const char replyvalue[] = "Reply Message";
-    pCharacteristic->setValue( (uint8_t*)replyvalue, strlen(replyvalue)+1 );
+    pCharacteristic->setValue( (uint8_t*) replyvalue, (size_t) (strlen(replyvalue)+1) );
     #endif
 
     if (value.length() > 0) {
