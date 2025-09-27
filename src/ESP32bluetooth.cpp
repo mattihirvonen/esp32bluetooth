@@ -70,7 +70,8 @@ void loop() {
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-class MyCallbacks : public BLECharacteristicCallbacks {
+class MyCallbacks : public BLECharacteristicCallbacks
+{
   void onWrite(BLECharacteristic *pCharacteristic) {
     String value = pCharacteristic->getValue().c_str();  // Note: String conversion problem in orginal demo code!
 
@@ -85,10 +86,41 @@ class MyCallbacks : public BLECharacteristicCallbacks {
       Serial.println("*********");
     }
   }
+
+  #if 1
+  void onRead(BLECharacteristic *pCharacteristic) {
+    String   value        = pCharacteristic-> getValue().c_str();
+
+    // All three methods work ok
+    #if 0
+    // Reply is uint16 value (note byteorder swap)
+    uint16_t replyvalue = 1234;
+    pCharacteristic->setValue( replyvalue );
+    #endif
+    #if 0
+    const char replyvalue[] = "Reply Message";
+    pCharacteristic->setValue(replyvalue);
+    #endif
+    #if 1
+    const char replyvalue[] = "Reply Message";
+    pCharacteristic->setValue( (uint8_t*)replyvalue, strlen(replyvalue)+1 );
+    #endif
+
+    if (value.length() > 0) {
+      char s[64];
+      Serial.println("*********");
+      snprintf(s, sizeof(s), "Read value(%d):", value.length() );
+      Serial.print(s);
+      Serial.println();
+      Serial.println("*********");
+    }
+  }
+  #endif
 };
 
 
-void setup() {
+void setup()
+{
   delay (3000);            // Give VScode+PlatformIO time to open monitor terminal window's COM port
   Serial.begin (115200);
 //Serial.println (string (MACHINETYPE " (") + string ((int) ESP.getCpuFreqMHz ()) + (char *) " MHz) " HOSTNAME " SDK: " + ESP.getSdkVersion () + (char *) " " VERSION_OF_SERVERS " compiled at: " __DATE__ " " __TIME__);
@@ -117,7 +149,8 @@ void setup() {
 }
 
 
-void loop() {
+void loop()
+{
   // put your main code here, to run repeatedly:
   delay(2000);
 }
