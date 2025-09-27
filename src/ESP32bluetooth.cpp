@@ -50,12 +50,15 @@ void loop() {
 
 //========================================================================================
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/Write/Write.ino
+// https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/Server_multiconnect/Server_multiconnect.ino
 //
 //  \Users\mattihirvonen\.platformio\packages\framework-espressif32\libraries\BLE\src
 //
 // Possible use/case strategy:
 // - get  "command" with onWrite() call back (here data example "read:xyz");
 // - wait onRead() callback to return "onWrite() selected" item (example "data:xyz=1234")
+//
+// See also methods: notify and indicate
 
 #if 0
 /**
@@ -76,18 +79,15 @@ void BLEValue::setValue(uint8_t* pData, size_t length) {
 } // setValue
 #endif
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 #if EXAMPLE_BLE_SERVER
 
-#include "Arduino.h"  // This include missing from original example code
-
-/*
-    Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleWrite.cpp
-    Ported to Arduino ESP32 by Evandro Copercini
-*/
-
+#include "Arduino.h"     // This include missing from original example code
 #include <BLEDevice.h>
-#include <BLEUtils.h>
 #include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
 
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
@@ -95,8 +95,28 @@ void BLEValue::setValue(uint8_t* pData, size_t length) {
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
+BLEServer         *pServer  = NULL;
+BLEService        *pService = NULL;
+BLECharacteristic *pCharacteristic;
+int                connectedClients;
+
+
 class MyCallbacks : public BLECharacteristicCallbacks
 {
+  void onConnect(BLECharacteristic *pCharacteristic) {
+    connectedClients += 1;
+    Serial.println("*******");
+    Serial.println("Connect");
+    Serial.println("*******");
+  }
+
+  void onDisconnect(BLECharacteristic *pCharacteristic) {
+    connectedClients -= 1;
+    Serial.println("*********");
+    Serial.println("Disonnect");
+    Serial.println("*********");
+  }
+
   void onWrite(BLECharacteristic *pCharacteristic) {
     String value = pCharacteristic->getValue().c_str();  // Note: String conversion problem in orginal demo code!
 
@@ -111,9 +131,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
     }
   }
 
-  #if 1
   void onRead(BLECharacteristic *pCharacteristic) {
-    String value = pCharacteristic-> getValue().c_str();
 
     // All three methods work ok
     #if 0
@@ -125,22 +143,17 @@ class MyCallbacks : public BLECharacteristicCallbacks
     const char replyvalue[] = "Reply Message";
     pCharacteristic->setValue(replyvalue);
     #endif
-    #if 1
+    #if 0
     // Use this method to reply:
     const char replyvalue[] = "Reply Message";
     pCharacteristic->setValue( (uint8_t*) replyvalue, (size_t) (strlen(replyvalue)+1) );
     #endif
 
-    if (value.length() > 0) {
-      char s[64];
-      Serial.println("*********");
-      snprintf(s, sizeof(s), "Read value(%d):", value.length() );
-      Serial.print(s);
-      Serial.println();
-      Serial.println("*********");
-    }
+    static int counter;
+    char replyvalue[64];
+    snprintf(replyvalue, sizeof(replyvalue), "counter: %d", ++counter);
+    pCharacteristic->setValue( (uint8_t*) replyvalue, (size_t) (strlen(replyvalue)+1) );
   }
-  #endif
 };
 
 
@@ -156,28 +169,65 @@ void setup()
   Serial.println("4- Go to CUSTOM CHARACTERISTIC in CUSTOM SERVICE and write something");
   Serial.println("5- See the magic =)");
 
+  // Create the BLE Device
   BLEDevice::init("MyESP32");
-  BLEServer *pServer = BLEDevice::createServer();
+  
+  pServer  = BLEDevice::createServer();
+  pService = pServer->createService(SERVICE_UUID);
 
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-
-  BLECharacteristic *pCharacteristic =
-    pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pCharacteristic =
+    pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ    | BLECharacteristic::PROPERTY_WRITE |
+                                                        BLECharacteristic::PROPERTY_NOTIFY  | BLECharacteristic::PROPERTY_INDICATE);
 
   pCharacteristic->setCallbacks(new MyCallbacks());
 
-  pCharacteristic->setValue("Hello World");
   pService->start();
 
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
   pAdvertising->start();
+
+  pinMode (LED_BUILTIN, OUTPUT | INPUT);
+  digitalWrite (LED_BUILTIN, LOW);
+}
+
+
+// Notify send first 20 databytes
+// Notify is push and forget type operation 
+void notify_Characteristics( void )
+{
+  static int counter;
+  char       buffer[64];
+
+  if ( connectedClients ) {
+    snprintf(buffer, sizeof(buffer), "notify: %d", ++counter);
+    pCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
+    pCharacteristic->notify();
+    Serial.println(buffer);
+  }
 }
 
 
 void loop()
 {
+  static TickType_t  xLastWakeTime, xNowTime;
+  static int         ledstate;
+
   // put your main code here, to run repeatedly:
-  delay(2000);
+
+  xNowTime = xTaskGetTickCount();
+  if ( (int32_t)(xNowTime - xLastWakeTime) < 1000 ) {
+    return;
+  }
+  xLastWakeTime = xNowTime;
+
+  if ( ledstate ) {
+    ledstate = LOW;   // turn the LED off by making the voltage 
+  }
+  else {
+    ledstate = HIGH; // turn the LED on (HIGH is the voltage level)
+    notify_Characteristics();
+  }
+  digitalWrite(LED_BUILTIN, ledstate);
 }
 
 #endif // EXAMPLE_BLE_SERVER
