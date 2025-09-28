@@ -132,25 +132,9 @@ class MyCallbacks : public BLECharacteristicCallbacks
   }
 
   void onRead(BLECharacteristic *pCharacteristic) {
-
-    // All three methods work ok
-    #if 0
-    // Reply is uint16 value (note byteorder swap)
-    uint16_t replyvalue = 1234;
-    pCharacteristic->setValue( replyvalue );
-    #endif
-    #if 0
-    const char replyvalue[] = "Reply Message";
-    pCharacteristic->setValue(replyvalue);
-    #endif
-    #if 0
-    // Use this method to reply:
-    const char replyvalue[] = "Reply Message";
-    pCharacteristic->setValue( (uint8_t*) replyvalue, (size_t) (strlen(replyvalue)+1) );
-    #endif
-
     static int counter;
     char replyvalue[64];
+  
     snprintf(replyvalue, sizeof(replyvalue), "counter: %d", ++counter);
     pCharacteristic->setValue( (uint8_t*) replyvalue, (size_t) (strlen(replyvalue)+1) );
   }
