@@ -216,27 +216,15 @@ void notify_TxCharacteristics( void )
 {
   char buffer[64];
 
-  #if  1
   if ( connectedClients ) {
     for (int i = 0; i < 3; i++)
     {
       snprintf(buffer, sizeof(buffer), "%s %6.3f\r\n", notify_data[i].topic, notify_data[i].value);
-      pTxCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
+      pTxCharacteristic->setValue( (uint8_t*) buffer, (size_t) (strlen(buffer)+1) );
       pTxCharacteristic->notify();
       Serial.println(buffer);
     }
   }
-
-  #else
-
-  static int counter;
-  if ( connectedClients ) {
-    snprintf(buffer, sizeof(buffer), "notify: %d", ++counter);
-    pTxCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
-    pTxCharacteristic->notify();
-    Serial.println(buffer);
-  }
-  #endif
 }
 
 
