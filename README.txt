@@ -9,8 +9,11 @@
 
  Select only one of #define EXAMPLE_* to be active
 
-  - EXAMPLE_SSP         ESP32:    Bluetooth Classic Serial Port Profile (SPP)
-  - EXAMPLE_BLE_SERVER  ESP32S3:  Server with write, read and notify properties (works with LightBlue)
-  - EXAMPLE_BLE_UART    ESP32S3:  BT UART gateway mimic application (works with LightBlue and Serial Bluetooth Terminal)
+  - EXAMPLE_SSP         ESP32:    Bluetooth Classic Serial Port Profile (Classic SPP -Serial Bluetooth Terminal))
+  - EXAMPLE_BLE_SERVER  ESP32S3:  Server with write, read and notify properties
+  - EXAMPLE_BLE_UART    ESP32S3:  BT UART gateway mimic application (
   - EXAMPLE_BLE         ESP32S3:  Not (yet?) work
 
+SERVER and UART examples works with Android applications:
+ - LightBlue
+ - Serial Bluetooth Terminal

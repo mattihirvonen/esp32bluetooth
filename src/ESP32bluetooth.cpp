@@ -94,9 +94,11 @@ void BLEValue::setValue(uint8_t* pData, size_t length) {
 
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
-
-#define SERVICE_UUID            "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID     "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+//
+// NOTE: The magic for connect to UART service is UUID !!!
+//
+#define SERVICE_UUID            "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"  // UART service UUID
+#define CHARACTERISTIC_UUID     "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_TX  "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 
@@ -194,19 +196,47 @@ void setup()
 }
 
 
+typedef struct
+{
+  char   topic[32];
+  float  value;
+} notify_t;
+
+notify_t notify_data[] =
+{
+  { "charge ",  -12.345 },   // [Ah]
+  { "current",   +5.678 },   // [A]
+  { "voltage",  +13.812 }    // [V]
+};
+
+
 // Notify send first 20 databytes
 // Notify is push and forget type operation 
 void notify_TxCharacteristics( void )
 {
-  static int counter;
-  char       buffer[64];
+  char buffer[64];
 
+  #if  1
+  if ( connectedClients ) {
+    for (int i = 0; i < 3; i++)
+    {
+      snprintf(buffer, sizeof(buffer), "%s %6.3f\r\n", notify_data[i].topic, notify_data[i].value);
+      pTxCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
+      pTxCharacteristic->notify();
+      Serial.println(buffer);
+    }
+  }
+
+  #else
+
+  static int counter;
   if ( connectedClients ) {
     snprintf(buffer, sizeof(buffer), "notify: %d", ++counter);
     pTxCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
     pTxCharacteristic->notify();
     Serial.println(buffer);
   }
+  #endif
 }
 
 
