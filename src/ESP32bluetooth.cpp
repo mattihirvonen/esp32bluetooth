@@ -210,6 +210,34 @@ void notify_TxCharacteristics( void )
 }
 
 
+void check_connect( void )
+{
+  #if 0
+  if (deviceConnected) {
+    Serial.print("Notifying Value: ");
+    Serial.println(txValue);
+    pTxCharacteristic->setValue(&txValue, 1);
+    pTxCharacteristic->notify();
+    txValue++;
+  //delay(1000);  // Notifying every 1 second
+  }
+  #endif
+
+  // disconnecting
+  if (!deviceConnected && oldDeviceConnected) {
+    delay(500);                   // give the bluetooth stack the chance to get things ready
+    pServer->startAdvertising();  // restart advertising
+    Serial.println("Started advertising again...");
+    oldDeviceConnected = false;
+  }
+  // connecting
+  if (deviceConnected && !oldDeviceConnected) {
+    // do stuff here on connecting
+    oldDeviceConnected = true;
+  }
+}
+
+
 void loop()
 {
   static TickType_t  xLastWakeTime, xNowTime;
@@ -223,6 +251,8 @@ void loop()
   }
   xLastWakeTime = xNowTime;
 
+  check_connect();
+  
   if ( ledstate ) {
     ledstate = LOW;   // turn the LED off by making the voltage 
   }
