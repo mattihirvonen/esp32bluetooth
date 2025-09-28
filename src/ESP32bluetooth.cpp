@@ -5,8 +5,8 @@
 // - Enable only one of following example codes
 //
 #define EXAMPLE_SSP         0  // ESP32:   Tested to work with Bluetooth Serial Terminal
-#define EXAMPLE_BLE_SERVER  0  // ESP32S3: Fixed to  work with LightBlue
-#define EAXMPLE_BLE_UART    1  // ESP32S3: Fixed to  work with LightBlue and Bluetooth Serial Terminal
+#define EXAMPLE_BLE_SERVER  1  // ESP32S3: Fixed to  work with LightBlue
+#define EAXMPLE_BLE_UART    0  // ESP32S3: Fixed to  work with LightBlue and Bluetooth Serial Terminal
 #define EXAMPLE_BLE         0  // ESP32S3: Not work properly ???
 
 //========================================================================================
@@ -95,31 +95,39 @@ void BLEValue::setValue(uint8_t* pData, size_t length) {
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID            "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID     "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define CHARACTERISTIC_UUID_TX  "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
-BLEServer         *pServer  = NULL;
-BLEService        *pService = NULL;
-BLECharacteristic *pCharacteristic;
+
+BLEServer         *pServer = NULL;
+BLECharacteristic *pTxCharacteristic;
 int                connectedClients;
+bool               deviceConnected = false;
+bool               oldDeviceConnected = false;
+
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    connectedClients += 1;
+    deviceConnected   = true;
+    Serial.println("****************");
+    Serial.println("Device connected");
+    Serial.println("****************");
+  };
+
+  void onDisconnect(BLEServer *pServer) {
+    connectedClients -= 1;
+    deviceConnected   = false;
+    Serial.println("*******************");
+    Serial.println("Device disconnected");
+    Serial.println("*******************");
+  }
+};
 
 
 class MyCallbacks : public BLECharacteristicCallbacks
 {
-  void onConnect(BLECharacteristic *pCharacteristic) {
-    connectedClients += 1;
-    Serial.println("*******");
-    Serial.println("Connect");
-    Serial.println("*******");
-  }
-
-  void onDisconnect(BLECharacteristic *pCharacteristic) {
-    connectedClients -= 1;
-    Serial.println("*********");
-    Serial.println("Disonnect");
-    Serial.println("*********");
-  }
-
   void onWrite(BLECharacteristic *pCharacteristic) {
     String value = pCharacteristic->getValue().c_str();  // Note: String conversion problem in orginal demo code!
 
@@ -159,12 +167,21 @@ void setup()
   // Create the BLE Device
   BLEDevice::init("MyESP32");
   
-  pServer  = BLEDevice::createServer();
-  pService = pServer->createService(SERVICE_UUID);
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
 
-  pCharacteristic =
+  // Create the BLE Service
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  // Create a BLE Characteristic
+  pTxCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
+
+  // Descriptor 2902 is not required when using NimBLE as it is automatically added based on the characteristic properties
+  pTxCharacteristic->addDescriptor(new BLE2902());
+
+  BLECharacteristic *pCharacteristic =
     pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  
+
   pCharacteristic->setCallbacks(new MyCallbacks());
 
   pService->start();
@@ -179,15 +196,15 @@ void setup()
 
 // Notify send first 20 databytes
 // Notify is push and forget type operation 
-void notify_Characteristics( void )
+void notify_TxCharacteristics( void )
 {
   static int counter;
   char       buffer[64];
 
   if ( connectedClients ) {
     snprintf(buffer, sizeof(buffer), "notify: %d", ++counter);
-    pCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
-    pCharacteristic->notify();
+    pTxCharacteristic->setValue( (uint8_t*) buffer, strlen(buffer)+1);
+    pTxCharacteristic->notify();
     Serial.println(buffer);
   }
 }
@@ -211,7 +228,7 @@ void loop()
   }
   else {
     ledstate = HIGH; // turn the LED on (HIGH is the voltage level)
-    notify_Characteristics();
+    notify_TxCharacteristics();
   }
   digitalWrite(LED_BUILTIN, ledstate);
 }
